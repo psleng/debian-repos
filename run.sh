@@ -38,7 +38,32 @@ echo "Building " $package_name " version " $deb_version
 if [ ! -f "${builddir}/${package_full_ll}.orig.tar.gz" ]; then
     mkdir -p "${sourcedir}"
     if [ ! -d "${sourcedir}/${package_name}" ]; then
-        git clone "${git_repo}" "${sourcedir}/${package_name}"
+        # PSL: Some repos are flaky, so retry the cloning
+        for i in 1 2 3
+        do
+            git clone "${git_repo}" "${sourcedir}/${package_name}" && { i=''; break; }
+            st=$?
+            sleeptime=$((i * 30))
+            echo "warning: Clone failed (status $st); sleeping $sleeptime and retrying"
+            sleep $sleeptime
+        done
+        if test ! -z "$i"; then
+            # Clone failed. Try user-supplied backup tar file before giving up
+            tarf=$topdir/../$package_name.tar.gz
+            if [ -f $tarf ]; then
+                echo "warning: trying to untar $tarf into $sourcedir"
+                tar -C $sourcedir -zxf $tarf || {
+                    echo "error: could not clone $git_repo"
+                    echo "error:       and untar $tarf failed; giving up"
+                    exit 1
+                }
+                echo "warning: untar $tarf succeeded; proceeding"
+            else
+                echo "error: could not clone $git_repo and $tarf not found"
+                echo "error: giving up"
+                exit 1
+            fi
+        fi
     fi
     git -C "${sourcedir}/${package_name}" remote update
     git -C "${sourcedir}/${package_name}" checkout "${last_tested_commit}"
