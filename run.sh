@@ -48,6 +48,12 @@ if [ ! -f "${builddir}/${package_full_ll}.orig.tar.gz" ]; then
             sleep $sleeptime
         done
         if test ! -z "$i"; then
+            # Backup repo is TexasInstruments github; contains copy of git_repo sourced from version.sh
+            backup_repo="https://github.com/TexasInstruments/$1"
+            echo "warning: Cloning using backup repo ${backup_repo}"
+            git clone "${backup_repo}" "${sourcedir}/${package_name}" && i=''
+        fi
+        if test ! -z "$i"; then
             # Clone failed. Try user-supplied backup tar file before giving up
             tarf=$topdir/../$package_name.tar.gz
             if [ -f $tarf ]; then
